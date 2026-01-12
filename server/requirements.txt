@@ -1,0 +1,15 @@
+# Requirements inferred from main.py
+fastapi>=0.95
+uvicorn[standard]>=0.20
+google-generativeai>=0.2.0
+python-dotenv>=1.0
+SQLAlchemy>=1.4
+python-multipart
+pgvector
+geopy>=2.3
+psycopg2-binary>=2.9
+
+# Optional / helpful utilities
+# pydantic>=1.10
+# typing-extensions>=4.0
+

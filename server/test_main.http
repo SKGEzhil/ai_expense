@@ -1,0 +1,48 @@
+###
+# Upload Receipt
+POST http://localhost:8000/upload-receipt
+Content-Type: multipart/form-data; boundary=boundary
+
+--boundary
+Content-Disposition: form-data; name="file"; filename="receipt.jpg"
+Content-Type: image/jpeg
+
+< ./data-1767270191534.csv
+--boundary--
+
+###
+# Search Transactions (Natural Language)
+GET http://localhost:8000/transactions?prompt=Show me food expenses last month&lim=5&page=1
+
+###
+# Create Transaction (Manual)
+POST http://localhost:8000/transactions
+Content-Type: application/json
+
+{
+  "txn_type": "DEBIT",
+  "amount": 150.0,
+  "payee": "Starbucks",
+  "category": "Food",
+  "transaction_date": "2026-01-02",
+  "transaction_time": "09:30:00",
+  "source_app": "Manual Entry",
+  "upi_transaction_id": "MANUAL123456",
+  "bank_account": "HDFC Bank",
+  "notes": "Morning coffee"
+}
+
+###
+# Update Transaction
+PUT http://localhost:8000/transactions/1
+Content-Type: application/json
+
+{
+  "amount": 160.0,
+  "notes": "Morning coffee with muffin"
+}
+
+###
+# Delete Transaction
+DELETE http://localhost:8000/transactions/1
+

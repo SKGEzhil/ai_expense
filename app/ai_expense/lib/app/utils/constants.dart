@@ -9,7 +9,7 @@ class AppConstants {
   // API Endpoints
   static const String transactionsEndpoint = '/transactions';
   static const String allTransactionsEndpoint = '/transactions/all';
-  static const String uploadReceiptEndpoint = '/upload-receipt';
+  static const String uploadReceiptEndpoint = '/transactions/upload-receipt';
   static const String createTransactionEndpoint = '/transactions';
   static const String updateTransactionEndpoint = '/transactions'; // + /{id}
   static const String deleteTransactionEndpoint = '/transactions'; // + /{id}

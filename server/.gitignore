@@ -2,3 +2,5 @@
 .venv
 data-1767270191534.csv
 init.sql
+logs
+sample.png

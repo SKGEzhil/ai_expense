@@ -1,18 +1,22 @@
 ###
 # Upload Receipt
-POST http://localhost:8000/upload-receipt
+POST http://localhost:8000/transactions/upload-receipt
 Content-Type: multipart/form-data; boundary=boundary
 
 --boundary
-Content-Disposition: form-data; name="file"; filename="receipt.jpg"
+Content-Disposition: form-data; name="file"; filename="sample.png"
 Content-Type: image/jpeg
 
-< ./data-1767270191534.csv
+< ./sample.png
 --boundary--
 
 ###
 # Search Transactions (Natural Language)
 GET http://localhost:8000/transactions?prompt=Show me food expenses last month&lim=5&page=1
+
+###
+# Get all Transactions
+GET http://localhost:8000/transactions/all
 
 ###
 # Create Transaction (Manual)
@@ -34,7 +38,7 @@ Content-Type: application/json
 
 ###
 # Update Transaction
-PUT http://localhost:8000/transactions/1
+PUT http://localhost:8000/transactions/40
 Content-Type: application/json
 
 {
@@ -44,5 +48,5 @@ Content-Type: application/json
 
 ###
 # Delete Transaction
-DELETE http://localhost:8000/transactions/1
+DELETE http://localhost:8000/transactions/40
 

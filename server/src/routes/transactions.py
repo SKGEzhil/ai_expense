@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from src.dependencies import get_db
 from src.main import logger
+from src.models.event import Event
 from src.models.transaction import Transaction
 from src.utils import extract_data_from_image, generate_embedding, generate_sql, generate_rag_chunk
 

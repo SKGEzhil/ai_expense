@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import '../utils/theme.dart';
 import 'transactions/transactions_view.dart';
 import 'analytics/analytics_view.dart';
+import 'events/events_view.dart';
 
 /// Main home view with bottom navigation
 class HomeView extends StatelessWidget {
@@ -12,6 +13,7 @@ class HomeView extends StatelessWidget {
 
   final List<Widget> _pages = [
     const TransactionsView(),
+    const EventsView(),
     const AnalyticsView(),
   ];
 
@@ -47,6 +49,12 @@ class HomeView extends StatelessWidget {
                     ),
                     _buildNavItem(
                       index: 1,
+                      icon: Icons.event_outlined,
+                      activeIcon: Icons.event,
+                      label: 'Events',
+                    ),
+                    _buildNavItem(
+                      index: 2,
                       icon: Icons.pie_chart_outline,
                       activeIcon: Icons.pie_chart,
                       label: 'Analytics',
@@ -72,7 +80,7 @@ class HomeView extends StatelessWidget {
       behavior: HitTestBehavior.opaque,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
           color: isSelected
               ? AppTheme.primaryColor.withOpacity(0.15)
@@ -104,3 +112,4 @@ class HomeView extends StatelessWidget {
     );
   }
 }
+

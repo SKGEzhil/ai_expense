@@ -1,5 +1,6 @@
-from sqlalchemy import Column, Integer, String, Float, Date, Text
+from sqlalchemy import Column, Integer, String, Float, Date, Text, ForeignKey
 from pgvector.sqlalchemy import Vector
+from sqlalchemy.orm import relationship
 
 from src.database import Base
 
@@ -25,6 +26,5 @@ class Transaction(Base):
     notes = Column(Text, nullable=True)
     embedding = Column(Vector(3072))
 
-    latitude = Column(Float, nullable=True)  # <--- NEW
-    longitude = Column(Float, nullable=True)  # <--- NEW
-    location_name = Column(String, nullable=True)  # <--- NEW
+    event_id = Column(Integer, ForeignKey("events.id"))
+    event = relationship("Event", back_populates="transactions")

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import '../models/transaction_model.dart';
+import '../models/event_model.dart';
 import '../utils/constants.dart';
 import 'settings_service.dart';
 
@@ -218,6 +219,169 @@ class ApiService {
       return data['message'] ?? data['error'] ?? data['detail'];
     } catch (_) {
       return null;
+    }
+  }
+
+  // ============== EVENTS API ==============
+
+  /// GET /events - Fetch all events
+  Future<List<Event>> getAllEvents() async {
+    try {
+      final uri = Uri.parse('$baseUrl${AppConstants.eventsEndpoint}/');
+      final response = await http.get(uri, headers: _jsonHeaders);
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        return data.map((json) => Event.fromJson(json)).toList();
+      } else {
+        throw ApiException(
+          'Failed to fetch events',
+          statusCode: response.statusCode,
+          body: response.body,
+        );
+      }
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw ApiException('Network error: ${e.toString()}');
+    }
+  }
+
+  /// GET /events/{id} - Fetch single event with transactions
+  Future<Event> getEvent(int eventId) async {
+    try {
+      final uri = Uri.parse('$baseUrl${AppConstants.eventsEndpoint}/$eventId');
+      final response = await http.get(uri, headers: _jsonHeaders);
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return Event.fromJson(data);
+      } else {
+        throw ApiException(
+          'Failed to fetch event',
+          statusCode: response.statusCode,
+          body: response.body,
+        );
+      }
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw ApiException('Network error: ${e.toString()}');
+    }
+  }
+
+  /// POST /events - Create new event
+  Future<Event> createEvent(Event event) async {
+    try {
+      final uri = Uri.parse('$baseUrl${AppConstants.eventsEndpoint}/');
+      final response = await http.post(
+        uri,
+        headers: _jsonHeaders,
+        body: json.encode(event.toJson()),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = json.decode(response.body);
+        return Event.fromJson(data);
+      } else {
+        final errorMessage = _extractErrorMessage(response.body) ?? 'Failed to create event';
+        throw ApiException(errorMessage, statusCode: response.statusCode, body: response.body);
+      }
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw ApiException('Network error: ${e.toString()}');
+    }
+  }
+
+  /// PUT /events - Update event
+  Future<void> updateEvent(Event event) async {
+    try {
+      final uri = Uri.parse('$baseUrl${AppConstants.eventsEndpoint}');
+      final response = await http.put(
+        uri,
+        headers: _jsonHeaders,
+        body: json.encode(event.toJson()),
+      );
+
+      if (response.statusCode != 200) {
+        final errorMessage = _extractErrorMessage(response.body) ?? 'Failed to update event';
+        throw ApiException(errorMessage, statusCode: response.statusCode, body: response.body);
+      }
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw ApiException('Network error: ${e.toString()}');
+    }
+  }
+
+  /// DELETE /events/{id} - Delete event
+  Future<String> deleteEvent(int eventId) async {
+    try {
+      final uri = Uri.parse('$baseUrl${AppConstants.eventsEndpoint}/$eventId');
+      final response = await http.delete(uri, headers: _jsonHeaders);
+
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        if (response.body.isNotEmpty) {
+          final data = json.decode(response.body);
+          return data['message'] ?? 'Event deleted successfully';
+        }
+        return 'Event deleted successfully';
+      } else {
+        final errorMessage = _extractErrorMessage(response.body) ?? 'Failed to delete event';
+        throw ApiException(errorMessage, statusCode: response.statusCode, body: response.body);
+      }
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw ApiException('Network error: ${e.toString()}');
+    }
+  }
+
+  /// POST /events/add_transactions - Add transactions to event
+  Future<String> addTransactionsToEvent(int eventId, List<int> txnIds) async {
+    try {
+      final uri = Uri.parse('$baseUrl${AppConstants.addTransactionsToEventEndpoint}');
+      final response = await http.post(
+        uri,
+        headers: _jsonHeaders,
+        body: json.encode({
+          'event_id': eventId,
+          'txn_ids': txnIds,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data['message'] ?? 'Transactions added successfully';
+      } else {
+        final errorMessage = _extractErrorMessage(response.body) ?? 'Failed to add transactions';
+        throw ApiException(errorMessage, statusCode: response.statusCode, body: response.body);
+      }
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw ApiException('Network error: ${e.toString()}');
+    }
+  }
+
+  /// POST /events/remove_transactions - Remove transactions from event
+  Future<String> removeTransactionsFromEvent(int eventId, List<int> txnIds) async {
+    try {
+      final uri = Uri.parse('$baseUrl${AppConstants.removeTransactionsFromEventEndpoint}');
+      final response = await http.post(
+        uri,
+        headers: _jsonHeaders,
+        body: json.encode({
+          'event_id': eventId,
+          'txn_ids': txnIds,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data['message'] ?? 'Transactions removed successfully';
+      } else {
+        final errorMessage = _extractErrorMessage(response.body) ?? 'Failed to remove transactions';
+        throw ApiException(errorMessage, statusCode: response.statusCode, body: response.body);
+      }
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw ApiException('Network error: ${e.toString()}');
     }
   }
 }

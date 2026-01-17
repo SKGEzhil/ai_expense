@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import '../../controllers/transaction_controller.dart';
+import '../../controllers/event_controller.dart';
 import '../../models/transaction_model.dart';
 import '../../widgets/prompt_bar.dart';
 import '../../widgets/filter_sheet.dart';
@@ -50,65 +51,85 @@ class TransactionsView extends StatelessWidget {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Expenses',
-                                style: TextStyle(
-                                  color: AppTheme.textPrimary,
-                                  fontSize: 28,
-                                  fontWeight: FontWeight.bold,
+                          // Show selection count when in selection mode
+                          if (controller.isSelectionMode.value)
+                            Row(
+                              children: [
+                                IconButton(
+                                  onPressed: () => controller.clearSelection(),
+                                  icon: const Icon(Icons.close, color: AppTheme.textPrimary),
                                 ),
-                              ),
-                              SizedBox(height: 4),
-                              Text(
-                                'Track your expenses',
-                                style: TextStyle(
-                                  color: AppTheme.textMuted,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ],
-                          ),
-                          Row(
-                            children: [
-                              // Settings button
-                              IconButton(
-                                onPressed: () => Get.to(() => const SettingsView()),
-                                icon: Container(
-                                  padding: const EdgeInsets.all(10),
-                                  decoration: BoxDecoration(
-                                    color: AppTheme.surfaceColor,
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(color: AppTheme.dividerColor),
-                                  ),
-                                  child: const Icon(
-                                    Icons.settings,
-                                    color: AppTheme.textSecondary,
-                                    size: 20,
+                                Text(
+                                  '${controller.selectedTransactionIds.length} selected',
+                                  style: const TextStyle(
+                                    color: AppTheme.textPrimary,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w600,
                                   ),
                                 ),
-                              ),
-                              // Filter button
-                              IconButton(
-                                onPressed: () => _showFilterSheet(context, controller),
-                                icon: Container(
-                                  padding: const EdgeInsets.all(10),
-                                  decoration: BoxDecoration(
-                                    color: AppTheme.surfaceColor,
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(color: AppTheme.dividerColor),
-                                  ),
-                                  child: const Icon(
-                                    Icons.tune,
-                                    color: AppTheme.textSecondary,
-                                    size: 20,
+                              ],
+                            )
+                          else
+                            const Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Expenses',
+                                  style: TextStyle(
+                                    color: AppTheme.textPrimary,
+                                    fontSize: 28,
+                                    fontWeight: FontWeight.bold,
                                   ),
                                 ),
-                              ),
-                            ],
-                          ),
+                                SizedBox(height: 4),
+                                Text(
+                                  'Track your expenses',
+                                  style: TextStyle(
+                                    color: AppTheme.textMuted,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          if (!controller.isSelectionMode.value)
+                            Row(
+                              children: [
+                                // Settings button
+                                IconButton(
+                                  onPressed: () => Get.to(() => const SettingsView()),
+                                  icon: Container(
+                                    padding: const EdgeInsets.all(10),
+                                    decoration: BoxDecoration(
+                                      color: AppTheme.surfaceColor,
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(color: AppTheme.dividerColor),
+                                    ),
+                                    child: const Icon(
+                                      Icons.settings,
+                                      color: AppTheme.textSecondary,
+                                      size: 20,
+                                    ),
+                                  ),
+                                ),
+                                // Filter button
+                                IconButton(
+                                  onPressed: () => _showFilterSheet(context, controller),
+                                  icon: Container(
+                                    padding: const EdgeInsets.all(10),
+                                    decoration: BoxDecoration(
+                                      color: AppTheme.surfaceColor,
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(color: AppTheme.dividerColor),
+                                    ),
+                                    child: const Icon(
+                                      Icons.tune,
+                                      color: AppTheme.textSecondary,
+                                      size: 20,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
                         ],
                       ),
                     ),
@@ -221,13 +242,24 @@ class TransactionsView extends StatelessWidget {
           );
         }),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _openAddTransaction(),
-        icon: const Icon(Icons.add),
-        label: const Text('Add'),
-        backgroundColor: AppTheme.primaryColor,
-        foregroundColor: Colors.white,
-      ),
+      floatingActionButton: Obx(() {
+        if (controller.isSelectionMode.value && controller.selectedTransactionIds.isNotEmpty) {
+          return FloatingActionButton.extended(
+            onPressed: () => _showAddToEventSheet(context, controller),
+            icon: const Icon(Icons.event),
+            label: const Text('Add to Event'),
+            backgroundColor: AppTheme.primaryColor,
+            foregroundColor: Colors.white,
+          );
+        }
+        return FloatingActionButton.extended(
+          onPressed: () => _openAddTransaction(),
+          icon: const Icon(Icons.add),
+          label: const Text('Add'),
+          backgroundColor: AppTheme.primaryColor,
+          foregroundColor: Colors.white,
+        );
+      }),
     );
   }
 
@@ -307,7 +339,7 @@ class TransactionsView extends StatelessWidget {
             ),
           ),
           // Transactions
-          ...group.transactions.map((txn) => _buildTransactionItem(txn)),
+          ...group.transactions.map((txn) => _buildTransactionItem(txn, Get.find<TransactionController>())),
         ],
       ),
     );
@@ -326,28 +358,53 @@ class TransactionsView extends StatelessWidget {
     return DateFormat('EEE, MMM d').format(date);
   }
 
-  Widget _buildTransactionItem(Transaction txn) {
+  Widget _buildTransactionItem(Transaction txn, TransactionController controller) {
     final category = TransactionCategory.fromString(txn.category);
+    final isSelected = txn.id != null && controller.isSelected(txn.id!);
+    final isSelectionMode = controller.isSelectionMode.value;
 
     return InkWell(
-      onTap: () => Get.to(() => TransactionDetailView(transaction: txn)),
+      onTap: () {
+        if (isSelectionMode) {
+          if (txn.id != null) controller.toggleSelection(txn.id!);
+        } else {
+          Get.to(() => TransactionDetailView(transaction: txn));
+        }
+      },
+      onLongPress: () {
+        if (!isSelectionMode) {
+          controller.toggleSelectionMode();
+        }
+        if (txn.id != null) controller.toggleSelection(txn.id!);
+      },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: const BoxDecoration(
-          border: Border(bottom: BorderSide(color: AppTheme.dividerColor, width: 0.5)),
+        decoration: BoxDecoration(
+          color: isSelected ? AppTheme.primaryColor.withOpacity(0.1) : Colors.transparent,
+          border: const Border(bottom: BorderSide(color: AppTheme.dividerColor, width: 0.5)),
         ),
         child: Row(
           children: [
-            // Category icon
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: category.color.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(10),
+            // Selection checkbox or Category icon
+            if (isSelectionMode)
+              Container(
+                margin: const EdgeInsets.only(right: 12),
+                child: Icon(
+                  isSelected ? Icons.check_circle : Icons.circle_outlined,
+                  color: isSelected ? AppTheme.primaryColor : AppTheme.textMuted,
+                  size: 22,
+                ),
+              )
+            else
+              Container(
+                padding: const EdgeInsets.all(8),
+                margin: const EdgeInsets.only(right: 12),
+                decoration: BoxDecoration(
+                  color: category.color.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(category.icon, color: category.color, size: 18),
               ),
-              child: Icon(category.icon, color: category.color, size: 18),
-            ),
-            const SizedBox(width: 12),
             // Details
             Expanded(
               child: Column(
@@ -509,6 +566,158 @@ class TransactionsView extends StatelessWidget {
 
   void _openAddTransaction() {
     Get.to(() => const AddTransactionView());
+  }
+
+  void _showAddToEventSheet(BuildContext context, TransactionController txnController) {
+    final eventController = Get.find<EventController>();
+    // Refresh events to get latest list
+    eventController.fetchEvents();
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppTheme.surfaceColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+        ),
+        child: Obx(() {
+          final events = eventController.events;
+          final isLoading = eventController.isLoading.value;
+
+          return Container(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Add to Event',
+                      style: TextStyle(
+                        color: AppTheme.textPrimary,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.close, color: AppTheme.textMuted),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '${txnController.selectedTransactionIds.length} transaction(s) selected',
+                  style: const TextStyle(
+                    color: AppTheme.textMuted,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Loading state
+                if (isLoading)
+                  const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(20),
+                      child: CircularProgressIndicator(color: AppTheme.primaryColor),
+                    ),
+                  ),
+
+                // Empty state
+                if (!isLoading && events.isEmpty)
+                  Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        children: [
+                          const Icon(
+                            Icons.event,
+                            color: AppTheme.textMuted,
+                            size: 48,
+                          ),
+                          const SizedBox(height: 12),
+                          const Text(
+                            'No events yet',
+                            style: TextStyle(
+                              color: AppTheme.textPrimary,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Create an event first from the Events tab',
+                            style: TextStyle(color: AppTheme.textMuted, fontSize: 13),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                // Events list
+                if (!isLoading && events.isNotEmpty)
+                  ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxHeight: MediaQuery.of(context).size.height * 0.4,
+                    ),
+                    child: ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: events.length,
+                      itemBuilder: (context, index) {
+                        final event = events[index];
+                        return ListTile(
+                          onTap: () async {
+                            Navigator.pop(context);
+                            await txnController.addSelectedToEvent(event.id!);
+                          },
+                          leading: Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: AppTheme.primaryColor.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Icon(
+                              Icons.event,
+                              color: AppTheme.primaryColor,
+                              size: 20,
+                            ),
+                          ),
+                          title: Text(
+                            event.eventName,
+                            style: const TextStyle(
+                              color: AppTheme.textPrimary,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          subtitle: event.eventNotes != null && event.eventNotes!.isNotEmpty
+                              ? Text(
+                                  event.eventNotes!,
+                                  style: const TextStyle(color: AppTheme.textMuted, fontSize: 12),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                )
+                              : null,
+                          trailing: const Icon(
+                            Icons.chevron_right,
+                            color: AppTheme.textMuted,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+              ],
+            ),
+          );
+        }),
+      ),
+    );
   }
 }
 

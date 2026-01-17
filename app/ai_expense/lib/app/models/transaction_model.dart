@@ -13,6 +13,7 @@ class Transaction {
   final String? upiTransactionId;
   final String? bankAccount;
   final String? notes;
+  final int? eventId;
 
   Transaction({
     this.id,
@@ -26,6 +27,7 @@ class Transaction {
     this.upiTransactionId,
     this.bankAccount,
     this.notes,
+    this.eventId,
   });
 
   /// Create Transaction from JSON (API response)
@@ -42,6 +44,7 @@ class Transaction {
       upiTransactionId: json['upi_transaction_id'] as String?,
       bankAccount: json['bank_account'] as String?,
       notes: json['notes'] as String?,
+      eventId: json['event_id'] as int?,
     );
   }
 
@@ -61,6 +64,7 @@ class Transaction {
       'upi_transaction_id': upiTransactionId,
       'bank_account': bankAccount,
       'notes': notes,
+      if (eventId != null) 'event_id': eventId,
     };
   }
 
@@ -114,6 +118,7 @@ class Transaction {
     String? upiTransactionId,
     String? bankAccount,
     String? notes,
+    int? eventId,
   }) {
     return Transaction(
       id: id ?? this.id,
@@ -127,6 +132,7 @@ class Transaction {
       upiTransactionId: upiTransactionId ?? this.upiTransactionId,
       bankAccount: bankAccount ?? this.bankAccount,
       notes: notes ?? this.notes,
+      eventId: eventId ?? this.eventId,
     );
   }
 

@@ -6,13 +6,18 @@ class AppConstants {
   // static const String baseUrl = 'http://192.168.31.53:8000';
   static const String baseUrl = 'https://ai-expense.thankfulwater-706eddc2.centralindia.azurecontainerapps.io';
 
-  // API Endpoints
+  // API Endpoints - Transactions
   static const String transactionsEndpoint = '/transactions';
   static const String allTransactionsEndpoint = '/transactions/all';
   static const String uploadReceiptEndpoint = '/transactions/upload-receipt';
   static const String createTransactionEndpoint = '/transactions';
   static const String updateTransactionEndpoint = '/transactions'; // + /{id}
   static const String deleteTransactionEndpoint = '/transactions'; // + /{id}
+
+  // API Endpoints - Events
+  static const String eventsEndpoint = '/events';
+  static const String addTransactionsToEventEndpoint = '/events/add_transactions';
+  static const String removeTransactionsFromEventEndpoint = '/events/remove_transactions';
 }
 
 /// Transaction types

@@ -1,0 +1,36 @@
+### Create Event
+POST http://localhost:8000/events/
+Content-Type: application/json
+
+{
+  "event_name": "Outing",
+  "event_notes": "Monthly outing"
+}
+###
+
+### GET All Events
+GET http://localhost:8000/events/
+
+###
+
+### Add Transaction to Event
+POST http://localhost:8000/events/add_transactions
+Content-Type: application/json
+
+{
+  "event_id": 1,
+  "txn_ids": [1,2,3]
+}
+
+###
+
+### Remove Transaction from Event
+POST http://localhost:8000/events/remove_transactions
+Content-Type: application/json
+
+{
+  "event_id": 1,
+  "txn_ids": [1,2,3]
+}
+
+###

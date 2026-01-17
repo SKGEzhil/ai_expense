@@ -26,6 +26,10 @@ class TransactionController extends GetxController {
   // Mode tracking: true = using prompt search, false = fetching all transactions
   final RxBool isSearchMode = false.obs;
 
+  // Selection mode for adding transactions to events
+  final RxBool isSelectionMode = false.obs;
+  final RxSet<int> selectedTransactionIds = <int>{}.obs;
+
   // Default prompt for search mode
   static const String defaultPrompt = 'last 30 days';
 
@@ -403,5 +407,82 @@ class TransactionController extends GetxController {
       result[category] = (result[category] ?? 0) + transaction.amount;
     }
     return result;
+  }
+
+  // ============== SELECTION MODE ==============
+
+  /// Toggle selection mode
+  void toggleSelectionMode() {
+    isSelectionMode.value = !isSelectionMode.value;
+    if (!isSelectionMode.value) {
+      selectedTransactionIds.clear();
+    }
+  }
+
+  /// Toggle transaction selection
+  void toggleSelection(int txnId) {
+    if (selectedTransactionIds.contains(txnId)) {
+      selectedTransactionIds.remove(txnId);
+    } else {
+      selectedTransactionIds.add(txnId);
+    }
+
+    // Exit selection mode if no items selected
+    if (selectedTransactionIds.isEmpty) {
+      isSelectionMode.value = false;
+    }
+  }
+
+  /// Clear selection
+  void clearSelection() {
+    selectedTransactionIds.clear();
+    isSelectionMode.value = false;
+  }
+
+  /// Check if transaction is selected
+  bool isSelected(int txnId) {
+    return selectedTransactionIds.contains(txnId);
+  }
+
+  /// Add selected transactions to event
+  Future<bool> addSelectedToEvent(int eventId) async {
+    if (selectedTransactionIds.isEmpty) return false;
+
+    try {
+      isLoading.value = true;
+      final message = await _apiService.addTransactionsToEvent(
+        eventId,
+        selectedTransactionIds.toList(),
+      );
+
+      // Clear cache and selection
+      await _cacheService.clearCache();
+      clearSelection();
+
+      Get.snackbar(
+        'Success',
+        message,
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.green.withOpacity(0.9),
+        colorText: Colors.white,
+        duration: const Duration(seconds: 2),
+      );
+
+      // Refresh transactions to update event_id
+      await refreshTransactions();
+
+      return true;
+    } catch (e) {
+      Get.snackbar(
+        'Error',
+        e.toString(),
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red.withOpacity(0.9),
+        colorText: Colors.white,
+      );
+      return false;
+    } finally {
+      isLoading.value = false;
+    }
   }
 }

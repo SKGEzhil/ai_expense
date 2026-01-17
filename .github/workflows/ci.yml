@@ -23,7 +23,7 @@ jobs:
       - name: Build test Docker image
         uses: docker/build-push-action@v5
         with:
-          context: .
+          context: ./server
           target: test
           load: true
           tags: ${{ env.DOCKER_IMAGE }}:test
@@ -55,7 +55,7 @@ jobs:
         if: github.event_name == 'push' && (github.ref == 'refs/heads/main')
         uses: docker/build-push-action@v5
         with:
-          context: .
+          context: ./server
           target: prod
           push: true
           tags: ${{ steps.meta.outputs.tags }}

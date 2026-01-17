@@ -6,3 +6,4 @@ logs
 sample.png
 alembic
 alembic.ini
+.secrets

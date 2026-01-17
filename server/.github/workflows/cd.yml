@@ -1,0 +1,56 @@
+name: CD - Deploy to Azure Container Apps
+
+on:
+  workflow_run:
+    workflows: ["CI - Build, Test & Push"]
+    types:
+      - completed
+    branches: [main, master]
+
+env:
+  DOCKER_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/ai_expense
+  AZURE_RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
+  AZURE_CONTAINER_APP_NAME: ${{ secrets.AZURE_CONTAINER_APP_NAME }}
+  AZURE_CONTAINER_APP_ENV: ${{ secrets.AZURE_CONTAINER_APP_ENV }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    # Only deploy if CI workflow succeeded
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+
+    # Grant OIDC token permissions so azure/login@v2 can work
+    permissions:
+      id-token: write   # allow the OIDC token exchange
+      contents: read    # allow checkout
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Login to Azure
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Get short SHA
+        id: sha
+        run: echo "short=$(echo ${{ github.event.workflow_run.head_sha }} | cut -c1-7)" >> $GITHUB_OUTPUT
+
+      - name: Deploy to Azure Container Apps
+        uses: azure/container-apps-deploy-action@v2
+        with:
+          resourceGroup: ${{ env.AZURE_RESOURCE_GROUP }}
+          containerAppName: ${{ env.AZURE_CONTAINER_APP_NAME }}
+          containerAppEnvironment: ${{ env.AZURE_CONTAINER_APP_ENV }}
+          imageToDeploy: ${{ env.DOCKER_IMAGE }}:${{ steps.sha.outputs.short }}
+          targetPort: 8000
+
+      - name: Deployment Summary
+        run: |
+          echo "✅ Deployment completed successfully!"
+          echo "📦 Image: ${{ env.DOCKER_IMAGE }}:${{ steps.sha.outputs.short }}"
+          echo "🌐 Azure Container App: ${{ env.AZURE_CONTAINER_APP_NAME }}"
+

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CopilotDiffPersistence">
+    <option name="pendingDiffs">
+      <map>
+        <entry key="$PROJECT_DIR$/.dockerignore">
+          <value>
+            <PendingDiffInfo>
+              <option name="filePath" value="$PROJECT_DIR$/.dockerignore" />
+              <option name="originalContent" value=".venv&#10;alembic&#10;api_tests&#10;logs&#10;alembic.ini&#10;data-1767270191534.csv&#10;init.sql&#10;__pycache__&#10;sample.png&#10;.env&#10;.github&#10;.git&#10;.gitignore&#10;.idea&#10;.pytest_cache&#10;*.pyc&#10;*.pyo&#10;*.pyd&#10;__pycache__&#10;*.egg-info&#10;.eggs&#10;dist&#10;build" />
+              <option name="updatedContent" value=".venv&#10;alembic&#10;api_tests&#10;logs&#10;alembic.ini&#10;data-1767270191534.csv&#10;init.sql&#10;__pycache__&#10;sample.png&#10;.env&#10;.github&#10;.git&#10;.gitignore&#10;.idea&#10;.pytest_cache&#10;*.pyc&#10;*.pyo&#10;*.pyd&#10;__pycache__&#10;*.egg-info&#10;.eggs&#10;dist&#10;build" />
+            </PendingDiffInfo>
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+</project>

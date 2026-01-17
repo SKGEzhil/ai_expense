@@ -10,10 +10,10 @@ geopy>=2.3
 psycopg2-binary>=2.9
 
 # Testing dependencies
-pytest>=7.0
-pytest-cov>=4.0
-pytest-asyncio>=0.21
-httpx>=0.24
+# pytest>=7.0
+# pytest-cov>=4.0
+# pytest-asyncio>=0.21
+# httpx>=0.24
 
 # Optional / helpful utilities
 # pydantic>=1.10

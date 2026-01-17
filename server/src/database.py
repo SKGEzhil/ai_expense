@@ -11,6 +11,12 @@ dotenv.load_dotenv()
 DATABASE_URL = os.environ.get("DATABASE_URL")
 
 # --- SETUP DATABASE ---
-engine = create_engine(DATABASE_URL)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+if DATABASE_URL:
+    engine = create_engine(DATABASE_URL)
+    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+else:
+    # Handle the case where we are just importing code but not running it
+    engine = None
+    SessionLocal = None
+
 Base = declarative_base()

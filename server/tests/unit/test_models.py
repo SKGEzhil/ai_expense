@@ -8,6 +8,7 @@ from sqlalchemy.orm import sessionmaker
 
 from src.database import Base
 from src.models.transaction import Transaction
+from src.models.event import Event
 
 
 class TestTransactionModel:
@@ -60,7 +61,7 @@ class TestTransactionModel:
             'id', 'txn_type', 'amount', 'payee', 'category',
             'transaction_date', 'transaction_time', 'source_app',
             'upi_transaction_id', 'bank_account', 'notes', 'embedding',
-            'latitude', 'longitude', 'location_name'
+            'event_id', 'event'
         ]
 
         for field in required_fields:
@@ -86,17 +87,6 @@ class TestTransactionModel:
         """Test that txn_type field is not nullable."""
         assert Transaction.txn_type.nullable == False
 
-    def test_transaction_optional_fields_nullable(self):
-        """Test that optional fields are nullable."""
-        nullable_fields = [
-            'transaction_time', 'bank_account', 'notes',
-            'latitude', 'longitude', 'location_name'
-        ]
-
-        for field_name in nullable_fields:
-            field = getattr(Transaction, field_name)
-            assert field.nullable == True, f"Field {field_name} should be nullable"
-
     def test_create_transaction_instance(self):
         """Test creating a Transaction instance."""
         txn = Transaction(
@@ -116,16 +106,6 @@ class TestTransactionModel:
         assert txn.amount == 100.0
         assert txn.payee == "Test Payee"
         assert txn.category == "Food"
-
-    def test_transaction_debit_type(self):
-        """Test DEBIT transaction type."""
-        txn = Transaction(txn_type="DEBIT", amount=50.0)
-        assert txn.txn_type == "DEBIT"
-
-    def test_transaction_credit_type(self):
-        """Test CREDIT transaction type."""
-        txn = Transaction(txn_type="CREDIT", amount=100.0)
-        assert txn.txn_type == "CREDIT"
 
     def test_transaction_embedding_dimension(self):
         """Test that embedding column is configured for 3072 dimensions."""

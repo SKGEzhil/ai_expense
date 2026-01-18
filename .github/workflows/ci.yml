@@ -7,7 +7,7 @@ on:
     branches: [main, master]
 
 env:
-  DOCKER_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/ai-spend-server
+  DOCKER_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/ai_expense
 
 jobs:
   build-test-push:

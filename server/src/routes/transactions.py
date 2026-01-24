@@ -144,7 +144,7 @@ async def get_all_transactions(
             actual_limit = lim
 
         result = db.execute(
-            text("SELECT * FROM transactions LIMIT :limit OFFSET :offset"),
+            text("SELECT * FROM transactions ORDER BY transaction_date DESC LIMIT :limit OFFSET :offset"),
             {"limit": actual_limit, "offset": offset_val}
         )
 

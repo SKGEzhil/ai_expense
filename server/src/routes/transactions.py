@@ -1,6 +1,6 @@
 
 from fastapi import APIRouter, UploadFile, File
-from typing import Any
+from typing import Any, Optional
 
 from fastapi import HTTPException, Depends, Query, Form
 from sqlalchemy import text
@@ -12,7 +12,8 @@ from src.dependencies import get_db
 from src.main import logger
 from src.models.event import Event
 from src.models.transaction import Transaction
-from src.utils import extract_data_from_image, generate_embedding, generate_sql, generate_rag_chunk
+from src.utils import extract_data_from_image, generate_embedding, generate_sql, generate_rag_chunk, get_offset_limit, \
+    parse_date_range
 
 router = APIRouter(
     prefix="/transactions",
@@ -81,11 +82,53 @@ async def upload_receipt(
 
 @router.get("/")
 async def get_transactions(
-        prompt: str = Query(..., description="Natural language search query"),
-        lim: int = Query(10, ge=-1),
+        prompt: str = Query(None, description="Natural language search query"),
+        date_range: str = Query(None, description="Date range in YYYY-MM-DD format"),
+        lim: int = Query(50, ge=-1),
         page: int = Query(1, ge=1),
         db: Session = Depends(get_db)
 ):
+    offset_val, actual_limit = get_offset_limit(page, lim)
+
+    # IF NO PROMPT PROVIDED, RETURN TRANSACTIONS BASED ON DATE RANGE
+
+    if prompt is None:
+        try:
+            if date_range is None:
+                result = db.query(Transaction).order_by(Transaction.transaction_date.desc()).offset(offset_val).limit(actual_limit).all()
+            else:
+                start_date, end_date = parse_date_range(date_range)
+                logger.info(f"Fetching transactions between {start_date} and {end_date}")
+
+                result = (db.query(Transaction)
+                          .filter(Transaction.transaction_date >= start_date, Transaction.transaction_date <= end_date)
+                          .order_by(Transaction.transaction_date.desc())
+                          .offset(offset_val)
+                          .limit(actual_limit)
+                          .all())
+
+            return [
+                {
+                    "id": txn.id,
+                    "txn_type": txn.txn_type,
+                    "amount": txn.amount,
+                    "payee": txn.payee,
+                    "category": txn.category,
+                    "transaction_date": txn.transaction_date,
+                    "transaction_time": txn.transaction_time,
+                    "source_app": txn.source_app,
+                    "upi_transaction_id": txn.upi_transaction_id,
+                    "bank_account": txn.bank_account,
+                    "notes": txn.notes,
+                    # Notice we EXCLUDE 'embedding' here
+                } for txn in result
+            ]
+
+        except Exception as e:
+            logger.error(f"Error getting transactions: {e}", exc_info=True)
+            raise HTTPException(status_code=400, detail=f"Error getting transactions: {e}")
+
+    # IF PROMPT IS PROVIDED, GENERATE SQL QUERY
 
     try:
         generated_sql = generate_sql(prompt, lim, page)
@@ -101,14 +144,6 @@ async def get_transactions(
 
     # 4. EXECUTE THE SQL
     try:
-        # Calculate standard SQL offset
-        offset_val = (page - 1) * lim
-
-        if lim == -1:
-            actual_limit = 10_000_000  # 10 Million
-        else:
-            actual_limit = lim
-
         # We bind the vector and pagination params safely
         stmt = text(generated_sql)
         result = db.execute(stmt, {
@@ -129,36 +164,6 @@ async def get_transactions(
         print(f"SQL Error: {e}")
         logger.error(f"Error executing SQL query: Query: {generated_sql} {e}", exc_info=True)
         raise HTTPException(status_code=400, detail="Could not interpret search query.")
-
-@router.get("/all")
-async def get_all_transactions(
-        lim: int = Query(50, ge=-1),
-        page: int = Query(1, ge=1),
-        db: Session = Depends(get_db)
-):
-    try:
-        offset_val = (page - 1) * lim
-        if lim == -1:
-            actual_limit = 10_000_000  # 10 Million
-        else:
-            actual_limit = lim
-
-        result = db.execute(
-            text("SELECT * FROM transactions ORDER BY transaction_date DESC LIMIT :limit OFFSET :offset"),
-            {"limit": actual_limit, "offset": offset_val}
-        )
-
-        # 5. FORMAT OUTPUT
-        rows = result.fetchall()
-        # Convert row objects to dicts (Standard SQLAchemy rows aren't JSON serializable directly)
-        keys = result.keys()
-        # print([dict(zip(keys, row)) for row in rows])
-        return [dict(zip(keys, row)) for row in rows]
-
-    except Exception as e:
-        logger.error(f"Error fetching transactions: {e}", exc_info=True)
-        raise HTTPException(status_code=400, detail="Could not fetch all transactions.")
-
 
 @router.put("/{txn_id}")
 async def update_transaction(

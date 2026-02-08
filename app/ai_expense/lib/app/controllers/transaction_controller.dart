@@ -15,6 +15,7 @@ class TransactionController extends GetxController {
   final RxBool isLoading = false.obs;
   final RxBool isLoadingMore = false.obs;
   final RxString currentPrompt = ''.obs;
+  final RxString currentDateRange = ''.obs; // Date range in dd-MM-yyyy,dd-MM-yyyy format
   final RxString errorMessage = ''.obs;
   final RxBool hasError = false.obs;
 
@@ -23,15 +24,16 @@ class TransactionController extends GetxController {
   final RxBool hasMoreData = true.obs;
   final int pageSize = 50;
 
-  // Mode tracking: true = using prompt search, false = fetching all transactions
+  // Mode tracking: 
+  // - isSearchMode = true, isDateRangeMode = false: using prompt search
+  // - isSearchMode = true, isDateRangeMode = true: using date range filter
+  // - isSearchMode = false: fetching all transactions
   final RxBool isSearchMode = false.obs;
+  final RxBool isDateRangeMode = false.obs;
 
   // Selection mode for adding transactions to events
   final RxBool isSelectionMode = false.obs;
   final RxSet<int> selectedTransactionIds = <int>{}.obs;
-
-  // Default prompt for search mode
-  static const String defaultPrompt = 'last 30 days';
 
   @override
   void onInit() {
@@ -61,9 +63,10 @@ class TransactionController extends GetxController {
       hasError.value = false;
       errorMessage.value = '';
 
-      final result = await _apiService.getAllTransactions(
+      final result = await _apiService.getTransactions(
         limit: pageSize,
         page: currentPage.value,
+        // No prompt and no dateRange = fetch all transactions
       );
 
       if (result.isEmpty) {
@@ -132,7 +135,8 @@ class TransactionController extends GetxController {
       final result = await _apiService.getTransactions(
         limit: pageSize,
         page: currentPage.value,
-        prompt: currentPrompt.value,
+        prompt: isDateRangeMode.value ? null : currentPrompt.value,
+        dateRange: isDateRangeMode.value ? currentDateRange.value : null,
       );
 
       if (result.isEmpty) {
@@ -151,8 +155,8 @@ class TransactionController extends GetxController {
         }
       }
 
-      // Save to cache after successful fetch (only first page with default prompt)
-      if (currentPage.value == 2 && currentPrompt.value == defaultPrompt) {
+      // Save to cache after successful fetch (only first page when not filtering)
+      if (currentPage.value == 2 && !isSearchMode.value) {
         await _cacheService.saveTransactions(transactions.toList());
       }
     } catch (e) {
@@ -215,19 +219,34 @@ class TransactionController extends GetxController {
     }
   }
 
-  /// Search with natural language prompt
+  /// Search with natural language prompt (from prompt bar)
   Future<void> searchWithPrompt(String prompt) async {
     isSearchMode.value = true;
+    isDateRangeMode.value = false;
     currentPrompt.value = prompt;
+    currentDateRange.value = '';
     // Clear cache when searching
     await _cacheService.clearCache();
     await fetchTransactions(refresh: true);
   }
 
-  /// Clear search and return to all transactions
+  /// Filter by date range (from filter sheet)
+  Future<void> filterByDateRange(String dateRange) async {
+    isSearchMode.value = true;
+    isDateRangeMode.value = true;
+    currentDateRange.value = dateRange;
+    currentPrompt.value = '';
+    // Clear cache when filtering
+    await _cacheService.clearCache();
+    await fetchTransactions(refresh: true);
+  }
+
+  /// Clear search/filter and return to all transactions
   Future<void> clearSearch() async {
     isSearchMode.value = false;
+    isDateRangeMode.value = false;
     currentPrompt.value = '';
+    currentDateRange.value = '';
     await fetchAllTransactions(refresh: true);
   }
 

@@ -113,3 +113,40 @@ def generate_rag_chunk(data: dict):
     preposition = "to" if data['txn_type'] == "DEBIT" else "from"
     narrative = f"{action} {data['amount']} {preposition} {data['payee']} via {data['bank_account']} on {data['transaction_date']} at {data['transaction_time']}. Additional notes: {data.get('notes', '')}."
     return generate_embedding(narrative)
+
+def get_offset_limit(page, lim):
+    # Calculate standard SQL offset
+    offset_val = (page - 1) * lim
+
+    if lim == -1:
+        actual_limit = 10_000_000  # 10 Million
+    else:
+        actual_limit = lim
+
+    return offset_val, actual_limit
+
+from datetime import datetime, date
+from fastapi import HTTPException
+
+def parse_date_range(date_range: str) -> tuple[date, date]:
+    if not date_range:
+        raise HTTPException(status_code=400, detail="date_range is required")
+
+    parts = [p.strip() for p in date_range.split(",")]
+    if len(parts) != 2:
+        raise HTTPException(
+            status_code=400,
+            detail="date_range must contain two dates separated by a comma, format dd-mm-yyyy,dd-mm-yyyy"
+        )
+
+    try:
+        start = datetime.strptime(parts[0], "%d-%m-%Y").date()
+        end = datetime.strptime(parts[1], "%d-%m-%Y").date()
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Dates must be in dd-mm-yyyy format")
+
+    if start > end:
+        raise HTTPException(status_code=400, detail="start date must be before or equal to end date")
+
+    return start, end
+

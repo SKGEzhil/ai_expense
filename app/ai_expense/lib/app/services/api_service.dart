@@ -29,19 +29,34 @@ class ApiService {
         'Accept': 'application/json',
       };
 
-  /// GET /transactions - Fetch transactions with optional prompt
+  /// GET /transactions - Fetch transactions
+  /// - No params: returns all transactions
+  /// - With date_range (dd-mm-yyyy,dd-mm-yyyy): returns transactions in date range
+  /// - With prompt: returns transactions matching natural language query
   Future<List<Transaction>> getTransactions({
     int limit = 20,
     int page = 1,
-    String prompt = '',
+    String? prompt,
+    String? dateRange,
   }) async {
     try {
+      final Map<String, String> queryParams = {
+        'lim': limit.toString(),
+        'page': page.toString(),
+      };
+
+      // Only include prompt if explicitly provided and non-empty
+      if (prompt != null && prompt.isNotEmpty) {
+        queryParams['prompt'] = prompt;
+      }
+
+      // Only include date_range if explicitly provided and non-empty
+      if (dateRange != null && dateRange.isNotEmpty) {
+        queryParams['date_range'] = dateRange;
+      }
+
       final uri = Uri.parse('$baseUrl${AppConstants.transactionsEndpoint}').replace(
-        queryParameters: {
-          'lim': limit.toString(),
-          'page': page.toString(),
-          'prompt': prompt,
-        },
+        queryParameters: queryParams,
       );
 
       final response = await http.get(uri, headers: _jsonHeaders);
@@ -62,36 +77,7 @@ class ApiService {
     }
   }
 
-  /// GET /transactions/all - Fetch all transactions without prompt (for initial load)
-  Future<List<Transaction>> getAllTransactions({
-    int limit = 50,
-    int page = 1,
-  }) async {
-    try {
-      final uri = Uri.parse('$baseUrl${AppConstants.allTransactionsEndpoint}').replace(
-        queryParameters: {
-          'lim': limit.toString(),
-          'page': page.toString(),
-        },
-      );
 
-      final response = await http.get(uri, headers: _jsonHeaders);
-
-      if (response.statusCode == 200) {
-        final List<dynamic> data = json.decode(response.body);
-        return data.map((json) => Transaction.fromJson(json)).toList();
-      } else {
-        throw ApiException(
-          'Failed to fetch all transactions',
-          statusCode: response.statusCode,
-          body: response.body,
-        );
-      }
-    } catch (e) {
-      if (e is ApiException) rethrow;
-      throw ApiException('Network error: ${e.toString()}');
-    }
-  }
 
   /// POST /upload-receipt - Upload screenshot for extraction
   Future<Transaction> uploadReceipt(File imageFile) async {

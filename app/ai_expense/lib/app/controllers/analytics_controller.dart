@@ -34,8 +34,15 @@ class AnalyticsController extends GetxController {
   // Cache key prefix
   static const String _cacheKeyPrefix = 'analytics_cache_';
 
-  /// Get prompt for time frame
-  String _getPromptForTimeFrame(TimeFrame frame) {
+  /// Format date range as dd-mm-yyyy,dd-mm-yyyy for API
+  String _formatDateRangeForApi(DateTime start, DateTime end) {
+    final startStr = DateFormat('dd-MM-yyyy').format(start);
+    final endStr = DateFormat('dd-MM-yyyy').format(end);
+    return '$startStr,$endStr';
+  }
+
+  /// Get display label for time frame (used for UI and caching)
+  String _getLabelForTimeFrame(TimeFrame frame) {
     switch (frame) {
       case TimeFrame.thisWeek:
         return 'this week';
@@ -47,8 +54,8 @@ class AnalyticsController extends GetxController {
         return 'last 30 days';
       case TimeFrame.custom:
         if (customStartDate.value != null && customEndDate.value != null) {
-          final start = DateFormat('yyyy-MM-dd').format(customStartDate.value!);
-          final end = DateFormat('yyyy-MM-dd').format(customEndDate.value!);
+          final start = DateFormat('dd-MM-yyyy').format(customStartDate.value!);
+          final end = DateFormat('dd-MM-yyyy').format(customEndDate.value!);
           return 'from $start to $end';
         }
         return 'last 30 days';
@@ -80,18 +87,22 @@ class AnalyticsController extends GetxController {
     }
   }
 
-  /// Analyse with time frame
+  /// Analyse with time frame - uses date_range parameter
   Future<void> analyseWithTimeFrame(TimeFrame frame) async {
     analysisMode.value = AnalysisMode.timeFrame;
     selectedTimeFrame.value = frame;
-    final prompt = _getPromptForTimeFrame(frame);
-    await _fetchData(prompt);
+    final range = _getDateRangeForTimeFrame(frame);
+    final dateRangeStr = _formatDateRangeForApi(range.start, range.end);
+    final label = _getLabelForTimeFrame(frame);
+    currentPrompt.value = label; // For display/caching purposes
+    await _fetchDataWithDateRange(dateRangeStr, label);
   }
 
-  /// Analyse with custom prompt
+  /// Analyse with custom prompt - uses prompt parameter (only from prompt bar)
   Future<void> analyseWithPrompt(String prompt) async {
     analysisMode.value = AnalysisMode.prompt;
-    await _fetchData(prompt);
+    currentPrompt.value = prompt;
+    await _fetchDataWithPrompt(prompt);
   }
 
   /// Set custom date range and analyse
@@ -101,18 +112,46 @@ class AnalyticsController extends GetxController {
     await analyseWithTimeFrame(TimeFrame.custom);
   }
 
-  /// Fetch data with prompt
-  Future<void> _fetchData(String prompt) async {
+  /// Fetch data with date range (for time frame analysis)
+  Future<void> _fetchDataWithDateRange(String dateRange, String cacheKey) async {
     if (isLoading.value) return;
 
     isLoading.value = true;
-    currentPrompt.value = prompt;
+
+    try {
+      final transactions = await _apiService.getTransactions(
+        limit: -1,
+        page: 1,
+        dateRange: dateRange,
+        // No prompt - only use date_range for time frame analysis
+      );
+
+      analyticsTransactions.assignAll(transactions);
+      hasData.value = true;
+      await _saveToCache(cacheKey, transactions);
+    } catch (e) {
+      final cached = await _loadFromCache(cacheKey);
+      if (cached.isNotEmpty) {
+        analyticsTransactions.assignAll(cached);
+        hasData.value = true;
+      }
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  /// Fetch data with prompt (only for explicit prompt bar queries)
+  Future<void> _fetchDataWithPrompt(String prompt) async {
+    if (isLoading.value) return;
+
+    isLoading.value = true;
 
     try {
       final transactions = await _apiService.getTransactions(
         limit: -1,
         page: 1,
         prompt: prompt,
+        // No date_range - only use prompt when user explicitly types in prompt bar
       );
 
       analyticsTransactions.assignAll(transactions);
@@ -138,8 +177,10 @@ class AnalyticsController extends GetxController {
 
   /// Refresh current analysis
   Future<void> refreshAnalysis() async {
-    if (currentPrompt.value.isNotEmpty) {
-      await _fetchData(currentPrompt.value);
+    if (analysisMode.value == AnalysisMode.timeFrame) {
+      await analyseWithTimeFrame(selectedTimeFrame.value);
+    } else if (currentPrompt.value.isNotEmpty) {
+      await _fetchDataWithPrompt(currentPrompt.value);
     }
   }
 

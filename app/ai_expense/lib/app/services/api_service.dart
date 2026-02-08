@@ -198,6 +198,107 @@ class ApiService {
     }
   }
 
+  // ==================== SPLIT API METHODS ====================
+
+  /// POST /transactions/split - Add a split to a transaction
+  Future<String> addSplit({
+    required int txnId,
+    required String payee,
+    required double amount,
+    String? notes,
+  }) async {
+    try {
+      final uri = Uri.parse('$baseUrl${AppConstants.addSplitEndpoint}');
+
+      final body = {
+        'txn_id': txnId,
+        'payee': payee,
+        'amount': amount,
+        'is_settled': false,
+        if (notes != null && notes.isNotEmpty) 'notes': notes,
+      };
+
+      final response = await http.post(
+        uri,
+        headers: _jsonHeaders,
+        body: json.encode(body),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data['message'] ?? 'Split added successfully';
+      } else {
+        final errorMessage = _extractErrorMessage(response.body) ?? 'Failed to add split';
+        throw ApiException(errorMessage, statusCode: response.statusCode, body: response.body);
+      }
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw ApiException('Network error: ${e.toString()}');
+    }
+  }
+
+  /// PUT /transactions/split - Update or settle a split
+  Future<String> updateSplit({
+    required int splitId,
+    String? payee,
+    double? amount,
+    String? notes,
+    bool? isSettled,
+  }) async {
+    try {
+      final uri = Uri.parse('$baseUrl${AppConstants.updateSplitEndpoint}');
+
+      // Build body with all fields - backend expects complete dict
+      final body = {
+        'id': splitId,
+        'payee': payee,
+        'amount': amount,
+        'is_settled': isSettled,
+        'notes': notes == null ? "" : notes,
+      };
+
+      final response = await http.put(
+        uri,
+        headers: _jsonHeaders,
+        body: json.encode(body),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data['message'] ?? 'Split updated successfully';
+      } else {
+        final errorMessage = _extractErrorMessage(response.body) ?? 'Failed to update split';
+        throw ApiException(errorMessage, statusCode: response.statusCode, body: response.body);
+      }
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw ApiException('Network error: ${e.toString()}');
+    }
+  }
+
+  /// DELETE /transactions/split/{id} - Delete a split
+  Future<String> deleteSplit(int splitId) async {
+    try {
+      final uri = Uri.parse('$baseUrl${AppConstants.deleteSplitEndpoint}/$splitId');
+
+      final response = await http.delete(uri, headers: _jsonHeaders);
+
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        if (response.body.isNotEmpty) {
+          final data = json.decode(response.body);
+          return data['message'] ?? 'Split deleted successfully';
+        }
+        return 'Split deleted successfully';
+      } else {
+        final errorMessage = _extractErrorMessage(response.body) ?? 'Failed to delete split';
+        throw ApiException(errorMessage, statusCode: response.statusCode, body: response.body);
+      }
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw ApiException('Network error: ${e.toString()}');
+    }
+  }
+
   /// Extract error message from response body
   String? _extractErrorMessage(String body) {
     try {

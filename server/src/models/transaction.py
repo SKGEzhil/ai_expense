@@ -1,8 +1,12 @@
+from typing import List
+
 from sqlalchemy import Column, Integer, String, Float, Date, Text, ForeignKey
 from pgvector.sqlalchemy import Vector
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, Mapped
 
 from src.database import Base
+from src.models.split import Split
+
 
 class Transaction(Base):
     __tablename__ = "transactions"
@@ -28,3 +32,5 @@ class Transaction(Base):
 
     event_id = Column(Integer, ForeignKey("events.id"))
     event = relationship("Event", back_populates="transactions")
+
+    splits: Mapped[List["Split"]] = relationship("Split", back_populates="transaction")

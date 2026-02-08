@@ -9,14 +9,12 @@ enum FilterTimeFrame { thisWeek, last7Days, thisMonth, last30Days, custom }
 class FilterSheet extends StatefulWidget {
   final DateTime? startDate;
   final DateTime? endDate;
-  final String? selectedType;
-  final Function(String prompt) onApply;
+  final Function(String? dateRange) onApply;
 
   const FilterSheet({
     super.key,
     this.startDate,
     this.endDate,
-    this.selectedType,
     required this.onApply,
   });
 
@@ -27,7 +25,6 @@ class FilterSheet extends StatefulWidget {
 class _FilterSheetState extends State<FilterSheet> {
   late DateTime? _startDate;
   late DateTime? _endDate;
-  late String _selectedType;
   FilterTimeFrame? _selectedTimeFrame;
   bool _showCustomDatePickers = false;
 
@@ -36,8 +33,7 @@ class _FilterSheetState extends State<FilterSheet> {
     super.initState();
     _startDate = widget.startDate;
     _endDate = widget.endDate;
-    _selectedType = widget.selectedType ?? 'ALL';
-    _selectedTimeFrame = FilterTimeFrame.thisMonth; // Default
+    _selectedTimeFrame = null; // No default - shows all transactions
   }
 
   void _selectTimeFrame(FilterTimeFrame frame) {
@@ -87,58 +83,60 @@ class _FilterSheetState extends State<FilterSheet> {
     setState(() {
       _startDate = null;
       _endDate = null;
-      _selectedType = 'ALL';
-      _selectedTimeFrame = FilterTimeFrame.thisMonth;
+      _selectedTimeFrame = null;
       _showCustomDatePickers = false;
     });
   }
 
   void _apply() {
-    // Build prompt from filter settings
-    final List<String> promptParts = [];
+    // Build date range from filter settings
+    String? dateRange;
 
-    // Type part
-    if (_selectedType == 'DEBIT') {
-      promptParts.add('debit transactions');
-    } else if (_selectedType == 'CREDIT') {
-      promptParts.add('credit transactions');
-    } else {
-      promptParts.add('both credit and debit transactions');
+    if (_selectedTimeFrame != null) {
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      DateTime startDate;
+      DateTime endDate = today;
+
+      switch (_selectedTimeFrame) {
+        case FilterTimeFrame.thisWeek:
+          // Start of current week (Monday)
+          final weekday = today.weekday;
+          startDate = today.subtract(Duration(days: weekday - 1));
+          break;
+        case FilterTimeFrame.last7Days:
+          startDate = today.subtract(const Duration(days: 6));
+          break;
+        case FilterTimeFrame.thisMonth:
+          startDate = DateTime(now.year, now.month, 1);
+          break;
+        case FilterTimeFrame.last30Days:
+          startDate = today.subtract(const Duration(days: 29));
+          break;
+        case FilterTimeFrame.custom:
+          if (_startDate != null && _endDate != null) {
+            startDate = _startDate!;
+            endDate = _endDate!;
+          } else {
+            // If custom but dates not set, return null (all transactions)
+            widget.onApply(null);
+            Navigator.pop(context);
+            return;
+          }
+          break;
+        default:
+          widget.onApply(null);
+          Navigator.pop(context);
+          return;
+      }
+
+      // Format as dd-MM-yyyy,dd-MM-yyyy
+      final startStr = DateFormat('dd-MM-yyyy').format(startDate);
+      final endStr = DateFormat('dd-MM-yyyy').format(endDate);
+      dateRange = '$startStr,$endStr';
     }
 
-    // Time frame part
-    switch (_selectedTimeFrame) {
-      case FilterTimeFrame.thisWeek:
-        promptParts.add('this week');
-        break;
-      case FilterTimeFrame.last7Days:
-        promptParts.add('last 7 days');
-        break;
-      case FilterTimeFrame.thisMonth:
-        promptParts.add('this month');
-        break;
-      case FilterTimeFrame.last30Days:
-        promptParts.add('last 30 days');
-        break;
-      case FilterTimeFrame.custom:
-        if (_startDate != null && _endDate != null) {
-          final start = DateFormat('yyyy-MM-dd').format(_startDate!);
-          final end = DateFormat('yyyy-MM-dd').format(_endDate!);
-          promptParts.add('from $start to $end');
-        } else if (_startDate != null) {
-          final start = DateFormat('yyyy-MM-dd').format(_startDate!);
-          promptParts.add('from $start');
-        } else if (_endDate != null) {
-          final end = DateFormat('yyyy-MM-dd').format(_endDate!);
-          promptParts.add('until $end');
-        }
-        break;
-      default:
-        break;
-    }
-
-    final prompt = promptParts.join(' ');
-    widget.onApply(prompt);
+    widget.onApply(dateRange);
     Navigator.pop(context);
   }
 
@@ -178,41 +176,6 @@ class _FilterSheetState extends State<FilterSheet> {
           ),
           const SizedBox(height: 24),
 
-          // Transaction Type
-          const Text(
-            'Transaction Type',
-            style: TextStyle(
-              color: AppTheme.textSecondary,
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              _TypeChip(
-                label: 'All',
-                isSelected: _selectedType == 'ALL',
-                onTap: () => setState(() => _selectedType = 'ALL'),
-              ),
-              const SizedBox(width: 12),
-              _TypeChip(
-                label: 'Debit',
-                isSelected: _selectedType == 'DEBIT',
-                onTap: () => setState(() => _selectedType = 'DEBIT'),
-                color: AppTheme.errorColor,
-              ),
-              const SizedBox(width: 12),
-              _TypeChip(
-                label: 'Credit',
-                isSelected: _selectedType == 'CREDIT',
-                onTap: () => setState(() => _selectedType = 'CREDIT'),
-                color: AppTheme.successColor,
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-
           // Time Frame
           const Text(
             'Time Frame',
@@ -223,6 +186,16 @@ class _FilterSheetState extends State<FilterSheet> {
             ),
           ),
           const SizedBox(height: 12),
+          // Show All option
+          _TimeChip(
+            label: 'Show All',
+            isSelected: _selectedTimeFrame == null,
+            onTap: () => setState(() {
+              _selectedTimeFrame = null;
+              _showCustomDatePickers = false;
+            }),
+          ),
+          const SizedBox(height: 8),
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -318,47 +291,7 @@ class _FilterSheetState extends State<FilterSheet> {
   }
 }
 
-class _TypeChip extends StatelessWidget {
-  final String label;
-  final bool isSelected;
-  final VoidCallback onTap;
-  final Color? color;
 
-  const _TypeChip({
-    required this.label,
-    required this.isSelected,
-    required this.onTap,
-    this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final chipColor = color ?? AppTheme.primaryColor;
-
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-        decoration: BoxDecoration(
-          color: isSelected ? chipColor.withOpacity(0.2) : AppTheme.cardColor,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isSelected ? chipColor : AppTheme.dividerColor,
-            width: isSelected ? 2 : 1,
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isSelected ? chipColor : AppTheme.textMuted,
-            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-          ),
-        ),
-      ),
-    );
-  }
-}
 
 class _TimeChip extends StatelessWidget {
   final String label;

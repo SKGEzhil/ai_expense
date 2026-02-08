@@ -12,6 +12,11 @@ class AppConstants {
   static const String createTransactionEndpoint = '/transactions';
   static const String updateTransactionEndpoint = '/transactions'; // + /{id}
   static const String deleteTransactionEndpoint = '/transactions'; // + /{id}
+  
+  // API Endpoints - Splits
+  static const String addSplitEndpoint = '/transactions/split';
+  static const String updateSplitEndpoint = '/transactions/split';
+  static const String deleteSplitEndpoint = '/transactions/split'; // + /{id}
 
   // API Endpoints - Events
   static const String eventsEndpoint = '/events';

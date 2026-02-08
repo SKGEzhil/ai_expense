@@ -144,10 +144,12 @@ class TransactionsView extends StatelessWidget {
                     ),
                   ),
 
-                  // Active search indicator
+                  // Active search/filter indicator
                   SliverToBoxAdapter(
                     child: Obx(() {
+                      // Check for prompt search
                       if (controller.isSearchMode.value &&
+                          !controller.isDateRangeMode.value &&
                           controller.currentPrompt.value.isNotEmpty) {
                         return Container(
                           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -167,7 +169,55 @@ class TransactionsView extends StatelessWidget {
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
-                                  'Filter: "${controller.currentPrompt.value}"',
+                                  'Search: "${controller.currentPrompt.value}"',
+                                  style: const TextStyle(
+                                    color: AppTheme.primaryLight,
+                                    fontSize: 13,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              GestureDetector(
+                                onTap: () => controller.clearSearch(),
+                                child: const Icon(
+                                  Icons.close,
+                                  color: AppTheme.primaryLight,
+                                  size: 16,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+                      // Check for date range filter
+                      if (controller.isSearchMode.value &&
+                          controller.isDateRangeMode.value &&
+                          controller.currentDateRange.value.isNotEmpty) {
+                        // Format the date range for display (dd-MM-yyyy,dd-MM-yyyy -> human readable)
+                        final parts = controller.currentDateRange.value.split(',');
+                        String displayText = controller.currentDateRange.value;
+                        if (parts.length == 2) {
+                          displayText = '${parts[0]} to ${parts[1]}';
+                        }
+                        return Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: AppTheme.primaryColor.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: AppTheme.primaryColor.withOpacity(0.3)),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.date_range,
+                                color: AppTheme.primaryLight,
+                                size: 16,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Filter: $displayText',
                                   style: const TextStyle(
                                     color: AppTheme.primaryLight,
                                     fontSize: 13,
@@ -557,8 +607,13 @@ class TransactionsView extends StatelessWidget {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => FilterSheet(
-        onApply: (prompt) {
-          controller.searchWithPrompt(prompt);
+        onApply: (dateRange) {
+          if (dateRange != null && dateRange.isNotEmpty) {
+            controller.filterByDateRange(dateRange);
+          } else {
+            // No filter selected - show all transactions
+            controller.clearSearch();
+          }
         },
       ),
     );

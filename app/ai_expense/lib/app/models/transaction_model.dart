@@ -1,4 +1,5 @@
 import 'package:intl/intl.dart';
+import 'split_model.dart';
 
 /// Transaction model matching the backend schema
 class Transaction {
@@ -14,6 +15,7 @@ class Transaction {
   final String? bankAccount;
   final String? notes;
   final int? eventId;
+  final List<Split> splits;
 
   Transaction({
     this.id,
@@ -28,10 +30,19 @@ class Transaction {
     this.bankAccount,
     this.notes,
     this.eventId,
+    this.splits = const [],
   });
 
   /// Create Transaction from JSON (API response)
   factory Transaction.fromJson(Map<String, dynamic> json) {
+    // Parse splits array if present
+    List<Split> splits = [];
+    if (json['splits'] != null && json['splits'] is List) {
+      splits = (json['splits'] as List)
+          .map((s) => Split.fromJson(s as Map<String, dynamic>))
+          .toList();
+    }
+
     return Transaction(
       id: json['id'] as int?,
       txnType: json['txn_type'] as String? ?? 'DEBIT',
@@ -45,6 +56,7 @@ class Transaction {
       bankAccount: json['bank_account'] as String?,
       notes: json['notes'] as String?,
       eventId: json['event_id'] as int?,
+      splits: splits,
     );
   }
 
@@ -119,6 +131,7 @@ class Transaction {
     String? bankAccount,
     String? notes,
     int? eventId,
+    List<Split>? splits,
   }) {
     return Transaction(
       id: id ?? this.id,
@@ -133,6 +146,7 @@ class Transaction {
       bankAccount: bankAccount ?? this.bankAccount,
       notes: notes ?? this.notes,
       eventId: eventId ?? this.eventId,
+      splits: splits ?? this.splits,
     );
   }
 
